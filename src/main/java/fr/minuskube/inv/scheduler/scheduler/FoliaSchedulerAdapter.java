@@ -1,0 +1,103 @@
+package fr.minuskube.inv.scheduler.scheduler;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Server;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
+
+public class FoliaSchedulerAdapter implements SchedulerAdapter {
+    private static final boolean SUPPORTED;
+
+    private static MethodHandle ASYNC_SCHEDULER_RUN;
+
+    private static MethodHandle SCHEDULED_TASK_CANCEL;
+
+    static {
+        boolean supporting = true;
+        try {
+            Lookup lookup = MethodHandles.publicLookup();
+
+            Class<?> scheduledTaskType = Class.forName("io.papermc.paper.threadedregions.scheduler.ScheduledTask");
+            SCHEDULED_TASK_CANCEL = lookup.findVirtual(scheduledTaskType, "cancel", MethodType.methodType(
+                    Class.forName("io.papermc.paper.threadedregions.scheduler.ScheduledTask$CancelledState")));
+
+            Class<?> asyncSchedulerType = Class
+                    .forName("io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler");
+
+            MethodHandle getAsyncScheduler = lookup.findVirtual(Server.class, "getGlobalRegionScheduler",
+                    MethodType.methodType(asyncSchedulerType));
+            Object asyncScheduler = getAsyncScheduler.invoke(Bukkit.getServer());
+
+            ASYNC_SCHEDULER_RUN = lookup.findVirtual(asyncSchedulerType, "RUN", MethodType.methodType(
+                    scheduledTaskType, Plugin.class, Consumer.class)).bindTo(asyncScheduler);
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException e) {
+            supporting = false;
+        } catch (Throwable throwable) {
+            Logger.getLogger(FoliaSchedulerAdapter.class.getName()).log(Level.WARNING,
+                    "Error in Folia scheduler adapter initialization", throwable);
+        }
+        SUPPORTED = supporting;
+    }
+
+    private final Plugin plugin;
+
+    public FoliaSchedulerAdapter(Plugin plugin) {
+        this.plugin = plugin;
+    }
+
+    public static boolean isSupported() {
+        return SUPPORTED;
+    }
+
+    @Override
+    public BukkitTask runTask(Plugin plugin, Runnable runnable) {
+        try {
+            final Consumer<Object> consumer = task -> runnable.run();
+            return new ScheduledTask(Objects.requireNonNull(ASYNC_SCHEDULER_RUN).invoke(plugin, consumer));
+        } catch (Throwable e) {
+            plugin.getLogger().log(Level.SEVERE, "Error in task scheduling by the Folia scheduler adapter", e);
+        }
+        return new ScheduledTask(null);
+    }
+
+    private class ScheduledTask implements BukkitTask {
+        private final Object task;
+
+        public ScheduledTask(Object task) {
+            this.task = task;
+        }
+
+        @Override
+        public int getTaskId() {
+            return 0;
+        }
+
+        @Override
+        public Plugin getOwner() {
+            return null;
+        }
+
+        @Override
+        public boolean isSync() {
+            return false;
+        }
+
+        @Override
+        public void cancel() {
+            try {
+                Objects.requireNonNull(SCHEDULED_TASK_CANCEL).invoke(task);
+            } catch (Throwable e) {
+                plugin.getLogger().log(Level.SEVERE, "Error in task canceling by the Folia scheduler adapter", e);
+            }
+        }
+    }
+}

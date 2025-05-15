@@ -4,6 +4,8 @@ import fr.minuskube.inv.content.InventoryContents;
 import fr.minuskube.inv.opener.ChestInventoryOpener;
 import fr.minuskube.inv.opener.InventoryOpener;
 import fr.minuskube.inv.opener.SpecialInventoryOpener;
+import fr.minuskube.inv.scheduler.scheduler.FoliaSchedulerAdapter;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -52,8 +54,7 @@ public class InventoryManager {
 
         this.defaultOpeners = Arrays.asList(
                 new ChestInventoryOpener(),
-                new SpecialInventoryOpener()
-        );
+                new SpecialInventoryOpener());
 
         this.openers = new ArrayList<>();
     }
@@ -140,11 +141,12 @@ public class InventoryManager {
             // Restrict putting items from the bottom inventory into the top inventory
             Inventory clickedInventory = e.getClickedInventory();
             if (clickedInventory == p.getOpenInventory().getBottomInventory()) {
-                if (e.getAction() == InventoryAction.COLLECT_TO_CURSOR || e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+                if (e.getAction() == InventoryAction.COLLECT_TO_CURSOR
+                        || e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
                     e.setCancelled(true);
                     return;
                 }
-  
+
                 if (e.getAction() == InventoryAction.NOTHING && e.getClick() != ClickType.MIDDLE) {
                     e.setCancelled(true);
                     return;
@@ -229,8 +231,13 @@ public class InventoryManager {
 
                 inventories.remove(p.getUniqueId());
                 contents.remove(p.getUniqueId());
-            } else
-                Bukkit.getScheduler().runTask(plugin, () -> p.openInventory(e.getInventory()));
+            } else {
+                if (FoliaSchedulerAdapter.isSupported()) {
+                    new FoliaSchedulerAdapter(plugin).runTask(plugin, () -> p.openInventory(e.getInventory()));
+                } else {
+                    Bukkit.getScheduler().runTask(plugin, () -> p.openInventory(e.getInventory()));
+                }
+            }
         }
 
         @EventHandler(priority = EventPriority.LOW)
