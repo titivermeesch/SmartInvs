@@ -62,6 +62,14 @@ public class InventoryManager {
     public void init() {
         pluginManager.registerEvents(new InvListener(), plugin);
 
+        if (FoliaSchedulerAdapter.isSupported()) {
+            new FoliaSchedulerAdapter(plugin).runTask(plugin, () -> {
+                new InvTask().runTaskTimer(plugin, 1, 1);
+            });
+        } else {
+            new InvTask().runTaskTimer(plugin, 1, 1);
+        }
+
         new InvTask().runTaskTimer(plugin, 1, 1);
     }
 
@@ -273,7 +281,7 @@ public class InventoryManager {
 
     }
 
-    class InvTask extends BukkitRunnable {
+    class InvTask implements Runnable {
 
         @Override
         public void run() {
