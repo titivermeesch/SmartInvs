@@ -18,6 +18,7 @@ public class FoliaSchedulerAdapter implements SchedulerAdapter {
     private static final boolean SUPPORTED;
 
     private static MethodHandle ASYNC_SCHEDULER_RUN;
+    private static MethodHandle ASYNC_SCHEDULER_RUN_TIMER;
 
     private static MethodHandle SCHEDULED_TASK_CANCEL;
 
@@ -39,6 +40,10 @@ public class FoliaSchedulerAdapter implements SchedulerAdapter {
 
             ASYNC_SCHEDULER_RUN = lookup.findVirtual(asyncSchedulerType, "RUN", MethodType.methodType(
                     scheduledTaskType, Plugin.class, Consumer.class)).bindTo(asyncScheduler);
+
+            ASYNC_SCHEDULER_RUN_TIMER = lookup.findVirtual(asyncSchedulerType, "runAtFixedRate", MethodType.methodType(
+                    scheduledTaskType, Plugin.class, Consumer.class, long.class, long.class)).bindTo(asyncScheduler);
+
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException e) {
             supporting = false;
         } catch (Throwable throwable) {
@@ -63,6 +68,18 @@ public class FoliaSchedulerAdapter implements SchedulerAdapter {
         try {
             final Consumer<Object> consumer = task -> runnable.run();
             return new ScheduledTask(Objects.requireNonNull(ASYNC_SCHEDULER_RUN).invoke(plugin, consumer));
+        } catch (Throwable e) {
+            plugin.getLogger().log(Level.SEVERE, "Error in task scheduling by the Folia scheduler adapter", e);
+        }
+        return new ScheduledTask(null);
+    }
+
+    @Override
+    public BukkitTask runTaskTimer(Plugin plugin, Runnable runnable, long delay, long period) {
+        try {
+            final Consumer<Object> consumer = task -> runnable.run();
+            return new ScheduledTask(
+                    Objects.requireNonNull(ASYNC_SCHEDULER_RUN_TIMER).invoke(plugin, consumer, delay, period));
         } catch (Throwable e) {
             plugin.getLogger().log(Level.SEVERE, "Error in task scheduling by the Folia scheduler adapter", e);
         }

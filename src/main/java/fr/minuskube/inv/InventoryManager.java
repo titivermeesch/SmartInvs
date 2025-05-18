@@ -63,14 +63,10 @@ public class InventoryManager {
         pluginManager.registerEvents(new InvListener(), plugin);
 
         if (FoliaSchedulerAdapter.isSupported()) {
-            new FoliaSchedulerAdapter(plugin).runTask(plugin, () -> {
-                new InvTask().runTaskTimer(plugin, 1, 1);
-            });
+            new FoliaSchedulerAdapter(plugin).runTaskTimer(plugin, new InvTask(), 1, 1);
         } else {
-            new InvTask().runTaskTimer(plugin, 1, 1);
+            Bukkit.getScheduler().runTaskTimer(plugin, new InvTask(), 1, 1);
         }
-
-        new InvTask().runTaskTimer(plugin, 1, 1);
     }
 
     public Optional<InventoryOpener> findOpener(InventoryType type) {

@@ -2,7 +2,7 @@ group 'fr.minuskube.inv'
 version '1.2.7'
 
 apply plugin: 'java'
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 sourceCompatibility = 1.8
@@ -43,52 +43,59 @@ jar {
     archiveFileName = 'SmartInvs-' + project.version + '.jar'
 }
 
-signing {
-    sign configurations.archives
-}
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
 
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-            if(project.hasProperty("ossrhUsername") && project.hasProperty("ossrhPassword")) {
-                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
-
-                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
-            }
-
-            pom.project {
-                name 'SmartInvs'
-                packaging 'jar'
-                description 'Advanced Inventory API for your Minecraft Bukkit plugins.'
-                url 'https://github.com/MinusKube/SmartInvs'
+            pom {
+                name = 'SmartInvs'
+                packaging = 'jar'
+                description = 'Advanced Inventory API for your Minecraft Bukkit plugins.'
+                url = 'https://github.com/MinusKube/SmartInvs'
 
                 scm {
-                    connection 'scm:git:git://github.com/MinusKube/SmartInvs.git'
-                    developerConnection 'scm:git:ssh://github.com:MinusKube/SmartInvs.git'
-                    url 'http://github.com/MinusKube/SmartInvs/tree/master'
+                    connection = 'scm:git:git://github.com/MinusKube/SmartInvs.git'
+                    developerConnection = 'scm:git:ssh://github.com:MinusKube/SmartInvs.git'
+                    url = 'http://github.com/MinusKube/SmartInvs/tree/master'
                 }
 
                 licenses {
                     license {
-                        name 'GNU General Public License v3.0'
-                        url 'https://www.gnu.org/licenses/gpl-3.0.en.html'
+                        name = 'GNU General Public License v3.0'
+                        url = 'https://www.gnu.org/licenses/gpl-3.0.en.html'
                     }
                 }
 
                 developers {
                     developer {
-                        id 'minuskube'
-                        name 'MinusKube'
-                        email 'minuskube@gmail.com'
+                        id = 'minuskube'
+                        name = 'MinusKube'
+                        email = 'minuskube@gmail.com'
                     }
                 }
             }
         }
     }
+
+    repositories {
+        maven {
+            def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+
+            if(project.hasProperty("ossrhUsername") && project.hasProperty("ossrhPassword")) {
+                credentials {
+                    username = ossrhUsername
+                    password = ossrhPassword
+                }
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }
