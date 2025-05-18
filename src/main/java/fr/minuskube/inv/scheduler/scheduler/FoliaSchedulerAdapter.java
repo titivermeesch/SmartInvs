@@ -38,7 +38,7 @@ public class FoliaSchedulerAdapter implements SchedulerAdapter {
                     MethodType.methodType(asyncSchedulerType));
             Object asyncScheduler = getAsyncScheduler.invoke(Bukkit.getServer());
 
-            ASYNC_SCHEDULER_RUN = lookup.findVirtual(asyncSchedulerType, "RUN", MethodType.methodType(
+            ASYNC_SCHEDULER_RUN = lookup.findVirtual(asyncSchedulerType, "run", MethodType.methodType(
                     scheduledTaskType, Plugin.class, Consumer.class)).bindTo(asyncScheduler);
 
             ASYNC_SCHEDULER_RUN_TIMER = lookup.findVirtual(asyncSchedulerType, "runAtFixedRate", MethodType.methodType(
